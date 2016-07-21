@@ -1,21 +1,11 @@
 package ru.bkmz.client;
 
 import com.google.common.util.concurrent.RateLimiter;
-import org.eclipse.jetty.util.BlockingArrayQueue;
-import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.asynchttpclient.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.*;
 
 /**
  * Created by bkmz on 21/07/16.
@@ -26,12 +16,11 @@ public class ReceiveClient {
     private final Logger log = LoggerFactory.getLogger(ReceiveClient.class);
 
     private RateLimiter rateLimiter;
-    private final Client client;
     private final BlockingQueue<String> queue = new ArrayBlockingQueue<>(10000);
+    private AsyncHttpClient httpClient;
 
     public ReceiveClient(int qps) {
         rateLimiter = RateLimiter.create(qps);
-        client = new JerseyClientBuilder().build();
         workerThread.start();
     }
 
@@ -60,21 +49,10 @@ public class ReceiveClient {
         };
     }
 
-    private Response sendMessage(String message) {
-        WebTarget webTarget = client.target("http://localhost:8080").path("receive");
-        Invocation invocation = webTarget.request()
-                .buildPost(Entity.entity(message, MediaType.TEXT_PLAIN_TYPE));
-
-        Response response = invocation.invoke();
-        log.debug("Response is: {}", response.getStatus());
-        return response;
-    }
-
-    public void join() {
-        try {
-            workerThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    private ListenableFuture<Response> sendMessage(String message) {
+        httpClient = new DefaultAsyncHttpClient();
+        BoundRequestBuilder builder = httpClient.preparePost("http://localhost:8080/receive");
+        builder.setBody(message);
+        return builder.execute();
     }
 }

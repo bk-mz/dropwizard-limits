@@ -6,12 +6,9 @@ package ru.bkmz.client;
 public class TestClientApp {
 
     public static void main(String[] args) {
-        ReceiveClient receiveClient = new ReceiveClient(30);
+        ReceiveClient receiveClient = new ReceiveClient(29);
         for (int i = 0; i < 100; i++) {
             receiveClient.send("some_message" + i);
         }
-
-        System.out.println("send SIGINT to interrupt.");
-        receiveClient.join();
     }
 }
